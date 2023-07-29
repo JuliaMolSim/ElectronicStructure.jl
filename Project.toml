@@ -1,0 +1,13 @@
+name = "ElectronicStructure"
+uuid = "06f4d588-0335-4e09-aa88-73b5b8c56678"
+authors = ["JuliaMolSim and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
