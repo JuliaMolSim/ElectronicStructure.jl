@@ -3,6 +3,11 @@ uuid = "06f4d588-0335-4e09-aa88-73b5b8c56678"
 authors = ["JuliaMolSim and contributors"]
 version = "0.1.0"
 
+[deps]
+ASEconvert = "3da9722f-58c2-4165-81be-b4d7253e8fd2"
+AtomsBase = "a963bdd2-2df7-4f54-a1ee-49d51e6be12a"
+DFTK = "acf6eb54-70d9-11e9-0013-234b7a5f5337"
+
 [compat]
 julia = "1.6"
 
