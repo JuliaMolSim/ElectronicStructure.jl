@@ -1,9 +1,4 @@
 import DFTK
-using AtomsBase
-
-abstract type AbstractCalculator end
-abstract type AbstractState end
-abstract type AbstractParameters end
 
 struct DftkCalculator <: AbstractCalculator end
 
@@ -33,7 +28,7 @@ function calculate(calc::DftkCalculator, params::DftkParameters)
     calculate(calc, DftkState(params))
 end
 
-function calculate(calc::DftkCalculator, state::DftkState)
+function calculate(::DftkCalculator, state::DftkState)
     scfres = state.scfres
     scfres = DFTK.self_consistent_field(state.basis;
                                         scfres.ψ, scfres.ρ, state.params.scf_kwargs...)
