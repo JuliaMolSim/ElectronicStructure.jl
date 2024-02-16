@@ -11,9 +11,9 @@ include("interface.jl")
 export DftkCalculator, DftkParameters, DftkState, calculate, energy
 include("dftk.jl")
 
-export AbinitParameters, AbinitState
+export AbinitCalculator, AbinitParameters, AbinitState
 include("abinit.jl")
-export QeParameters, QeState
+export QeCalculator, QeParameters, QeState
 include("quantum_espresso.jl")
 
 end

@@ -4,6 +4,7 @@ using ABINIT_jll
 using Unitful
 using UnitfulAtomic
 using LazyArtifacts
+using NCDatasets
 
 Base.@kwdef struct AbinitCalculator <: AbstractCalculator
     # TODO
@@ -31,7 +32,7 @@ struct AbinitState <: AbstractState
     ase_atoms::Py
 end
 
-function AbinitState(params::AbinitParameters)
+function AbinitState(params::AbinitParameters; extra_parameters...)
     ase_atoms = convert_ase(params.system)
     ase_atoms.calc = pyimport("ase.calculators.abinit").Abinit(;
         label="abinit",
@@ -47,6 +48,7 @@ function AbinitState(params::AbinitParameters)
         params.pps,
         nsym=1,
         v8_legacy_format=false,
+        extra_parameters...,
     )
     AbinitState(params, ase_atoms)
 end
@@ -56,22 +58,36 @@ function calculate(calc::AbinitCalculator, params::AbinitParameters)
 end
 
 function calculate(::AbinitCalculator, state::AbinitState)
-    ABINIT_jll.abinit() do abinit
-        abinit_command = "$abinit $(state.ase_atoms.calc.label).in"
-        state.ase_atoms.calc.command = abinit_command
-        withenv("OMP_NUM_THREADS" => state.params.n_threads) do
-            state.ase_atoms.get_potential_energy()
+    mktempdir() do tmpdir
+        cdir = pwd()
+        data = (; )
+        try
+            cd(tmpdir)
+            potential_energy = ABINIT_jll.abinit() do abinit
+                ase_workaround = ";ln -sf abinito_DS1_EIG abinito_EIG"
+                state.ase_atoms.calc.command = "$abinit $(state.ase_atoms.calc.label).in >/dev/null" *
+                                               ase_workaround
+                austrip(pyconvert(Float64, state.ase_atoms.get_potential_energy()) * u"eV")
+            end
+            dynmats = NCDataset("$(state.ase_atoms.calc.label)o_DS2_DDB.nc", "r") do ds
+                copy(ds["second_derivative_of_energy"])
+            end
+            data = merge(data, (; potential_energy, dynmats))
+        finally
+            cd(cdir)
+            data
         end
     end
 end
 
 function energy(state::AbinitState)
-    pd_pbe_family = artifact"pd_nc_sr_pbe_standard_0.4.1_upf"
-    energy = mktempdir() do tmpdir
+    # pd_pbe_family = artifact"pd_nc_sr_pbe_standard_0.4.1_upf"
+    potential_energy = mktempdir() do tmpdir
         cdir = pwd()
+        potential_energy = nothing
         try
             cd(tmpdir)
-            energy = ABINIT_jll.abinit() do abinit
+            potential_energy = ABINIT_jll.abinit() do abinit
                 # `withenv` does not work…
                 state.ase_atoms.calc.command = "$abinit abinit.in > abinit.out"
                 #= Hack if other pseudo…
@@ -83,14 +99,14 @@ function energy(state::AbinitState)
                 state.ase_atoms.get_potential_energy()
             end
         finally
-            @info open("$tmpdir/abinit.in") do f
+            @debug open("$tmpdir/abinit.in") do f
                 while !eof(f)
-                    @info readline(f)
+                    @debug readline(f)
                 end
             end
             cd(cdir)
-            energy
+            potential_energy
         end
     end
-    austrip(pyconvert(Float64, energy) * u"eV")
+    austrip(pyconvert(Float64, potential_energy) * u"eV")
 end
