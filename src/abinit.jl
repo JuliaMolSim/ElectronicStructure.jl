@@ -10,10 +10,11 @@ end
 
 Base.@kwdef struct AbinitParameters <: AbstractParameters
     system::AbstractSystem
-    ecut        = ustrip(u"eV", 40u"Eh_au")
+    ecut        = ustrip(u"eV", 10u"Eh_au")
     kpts        = [1, 1, 1]
-    tolwfr      = 1e-22
-    xc          = "LDA"
+    tolwfr      = 1e-12
+    xc          = "PBE"
+    pps         = "hgh"
     n_threads   = BLAS.get_num_threads()
 end
 
@@ -37,8 +38,9 @@ function AbinitState(params::AbinitParameters)
         params.kpts,
         params.tolwfr,
         params.xc,
+        #ixc = "-001012", # explicit [:lda_x, :lda_c_pw]
+        params.pps,
         nsym=1,
-        ixc="-001007",
         v8_legacy_format=false,
     )
     AbinitState(params, ase_atoms)

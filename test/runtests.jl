@@ -27,8 +27,8 @@ end
     end
     energy_dftk = let
         state_dftk = DftkState(DftkParameters(; system,
-                                              functionals=[:lda_x, :lda_c_pw],
-                                              basis_kwargs = (; Ecut=40, kgrid=[1, 1, 1]),
+                                              # functionals=[:lda_x, :lda_c_pw],
+                                              basis_kwargs = (; Ecut=10, kgrid=[1, 1, 1]),
                                               scf_kwargs = (; tol=1e-6),
                                              ))
         state_dftk = calculate(DftkCalculator(), state_dftk)
