@@ -17,9 +17,14 @@ end
     using ASEconvert
     using DFTK
     using LinearAlgebra
+    using LazyArtifacts
 
     system = pyconvert(AbstractSystem, ase.build.bulk("Si"))
     system = attach_psp(system; Si="hgh/lda/si-q4")
+    #= Systematic error…
+    pd_pbe_family = artifact"pd_nc_sr_pbe_standard_0.4.1_upf"
+    system = attach_psp(system; Si=joinpath(pd_pbe_family, "Si.upf"))
+    =#
 
     energy_abinit = let
         state_abinit = AbinitState(AbinitParameters(; system))

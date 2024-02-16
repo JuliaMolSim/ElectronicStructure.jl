@@ -3,6 +3,7 @@ using PythonCall
 using ABINIT_jll
 using Unitful
 using UnitfulAtomic
+using LazyArtifacts
 
 Base.@kwdef struct AbinitCalculator <: AbstractCalculator
     # TODO
@@ -39,6 +40,10 @@ function AbinitState(params::AbinitParameters)
         params.tolwfr,
         params.xc,
         #ixc = "-001012", # explicit [:lda_x, :lda_c_pw]
+        # Let's not use ABINIT_PP_PATH.
+        pp_paths=["$PROJECT_ROOT/data/psp"],
+        # Cannot work because of duplicate…
+        # pseudos="tt",
         params.pps,
         nsym=1,
         v8_legacy_format=false,
@@ -61,6 +66,7 @@ function calculate(::AbinitCalculator, state::AbinitState)
 end
 
 function energy(state::AbinitState)
+    pd_pbe_family = artifact"pd_nc_sr_pbe_standard_0.4.1_upf"
     energy = mktempdir() do tmpdir
         cdir = pwd()
         try
@@ -68,16 +74,20 @@ function energy(state::AbinitState)
             energy = ABINIT_jll.abinit() do abinit
                 # `withenv` does not work…
                 state.ase_atoms.calc.command = "$abinit abinit.in > abinit.out"
-                @show state.ase_atoms.get_forces()
+                #= Hack if other pseudo…
+                delete_first_pseudo_line = `sed -i '0,/^pseudos/{//d}' abinit.in`
+                add_pseudo_line = `sed -i "1 i\\pseudos \"$(pd_pbe_family)/Si.upf\"" abinit.in`
+                state.ase_atoms.calc.command = "$(delete_first_pseudo_line); $(add_pseudo_line); " *
+                                               pyconvert(String, state.ase_atoms.calc.command)
+                =#
                 state.ase_atoms.get_potential_energy()
             end
+        finally
             @info open("$tmpdir/abinit.in") do f
                 while !eof(f)
                     @info readline(f)
                 end
             end
-            energy
-        finally
             cd(cdir)
             energy
         end
