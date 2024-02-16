@@ -37,7 +37,7 @@ function AbinitState(params::AbinitParameters; extra_parameters...)
     ase_atoms.calc = pyimport("ase.calculators.abinit").Abinit(;
         label="abinit",
         params.ecut,
-        params.kpts,
+        #params.kpts,
         params.tolwfr,
         params.xc,
         #ixc = "-001012", # explicit [:lda_x, :lda_c_pw]
@@ -47,6 +47,11 @@ function AbinitState(params::AbinitParameters; extra_parameters...)
         # pseudos="tt",
         params.pps,
         nsym=1,
+        # Otherwise, cannot have non-symmetric kgrid because of ASE that uses kptopt=1…
+        kptopt=1,
+        nshiftk=1,
+        ngkpt="1 2 1",
+        shiftk="0.0 0.0 0.0",
         v8_legacy_format=false,
         extra_parameters...,
     )
@@ -101,7 +106,7 @@ function energy(state::AbinitState)
         finally
             @debug open("$tmpdir/abinit.in") do f
                 while !eof(f)
-                    @debug readline(f)
+                    @info readline(f)
                 end
             end
             cd(cdir)
