@@ -30,8 +30,8 @@ end
 
 function calculate(::DftkCalculator, state::DftkState)
     scfres = state.scfres
-    scfres = DFTK.self_consistent_field(state.basis;
-                                        scfres.ψ, scfres.ρ, state.params.scf_kwargs...)
+    scfres = DFTK.self_consistent_field(state.basis; scfres.ψ, scfres.ρ,
+                                        state.params.scf_kwargs...)
     DftkState(state.params, state.model, state.basis, scfres)
 end
 

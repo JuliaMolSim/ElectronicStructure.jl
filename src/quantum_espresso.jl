@@ -29,7 +29,7 @@ Base.@kwdef struct QeParameters <: AbstractParameters
     pseudopotentials  = Dict{String,String}()
     extra_parameter   = Dict{Symbol,Any}()
     working_directory = mktempdir(pwd())
-    n_mpi_procs       = MPI.Comm_size(MPI.COMM_WORLD)
+    n_mpi_procs       = (MPI.Init(); MPI.Comm_size(MPI.COMM_WORLD))
     n_threads         = BLAS.get_num_threads()
 end
 
@@ -80,14 +80,13 @@ function calculate(::QeCalculator, state::QeState)
     MPI.mpiexec() do mpirun
         QuantumEspresso_jll.pwscf() do pwscf
             qe_command = "$mpirun -np $n_mpi_procs $pwscf -in PREFIX.pwi > PREFIX.pwo"
-            state.ase_atoms.calc.command = qe_command
             withenv("OMP_NUM_THREADS" => state.params.n_threads) do
-                state.ase_atoms.calc.get_potential_energy()
+                state.ase_atoms.get_potential_energy()
             end
         end
     end
 end
 
 function energy(state::QeState)
-    austrip(state.ase_calculator.get_potential_energy() * u"eV")
+    austrip(state.ase_atoms.get_potential_energy() * u"eV")
 end
