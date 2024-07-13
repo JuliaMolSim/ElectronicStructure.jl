@@ -1,4 +1,5 @@
 using ASEconvert
+using AtomsCalculators
 using PythonCall
 using QuantumEspresso_jll
 using MPI
@@ -6,9 +7,10 @@ using Unitful
 using UnitfulAtomic
 
 
-Base.@kwdef struct QeCalculator <: AbstractCalculator
-    # TODO QE setup parameters
-end
+### !!!
+### TODO: As of now, this relies on ASE, but we want to have this to only depend on QuantumEspresso_jll
+### !!!
+
 
 Base.@kwdef struct QeParameters <: AbstractParameters
     # TODO Keywords currently based on ASE
@@ -71,6 +73,14 @@ function QeState(params::QeParameters)
     QeState(params, ase_atoms)
 end
 
+
+struct QeCalculator <: AbstractCalculator
+    state::QeState
+
+    QeCalculator(params::QeParameters) = new(QeState(params))
+end
+
+
 function calculate(calc::QeCalculator, params::QeParameters)
     calculate(calc, QeState(params))
 end
@@ -90,4 +100,37 @@ end
 
 function energy(state::QeState)
     austrip(state.ase_calculator.get_potential_energy() * u"eV")
+end
+
+# # AtomsCalculators interface
+
+# This might need some work reorganizing how the system and the state are wrapped
+# Ignoring `sys` for now`for all methods as we wrap it
+
+AtomsCalculators.energy_unit(calc::QeCalculator) = u"eV"
+AtomsCalculators.length_unit(calc::QeCalculator) = u"Å"
+
+AtomsCalculators.@generate_interface function AtomsCalculators.potential_energy(sys, calc::QeCalculator; kwargs...)
+    unit = energy_unit(calc)
+    # This might need some work reorganizing how the system and the state are wrapped
+    # Ignoring `sys` for now`
+    energy = calc.state.ase_calculator.get_potential_energy()
+    return pyconvert(Float64, energy) * unit
+end
+
+AtomsCalculators.@generate_interface function AtomsCalculators.forces(sys, calc::QeCalculator; kwargs...)
+    unit = energy_unit(calc) / energy_unit(calc)
+    forces = calc.state.ase_calculator.get_forces()
+    return pyconvert(Array, forces) * unit
+end
+
+AtomsCalculators.@generate_interface function AtomsCalculators.virial(sys, calc::QeCalculator; kwargs...)
+    state = calc.state
+    ase_system = state.params.system
+
+    unit = energy_unit(calc)
+    stress = state.ase_calculator.get_stress(system)
+    cons = ase.constraints
+    virial = cons.voigt_6_to_full_3x3_stress(stress) * ( -ase_system.get_volume() )
+    return pyconvert(Array, stress) * unit
 end
